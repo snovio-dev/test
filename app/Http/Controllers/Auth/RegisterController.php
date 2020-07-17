@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\BannedDomain;
 use App\Mail\ConfirmationEmail;
+use App\Service\IpAddressService;
 use App\UserList;
 use Illuminate\Http\Request;
 use App\User;
@@ -17,10 +18,10 @@ class RegisterController extends Controller
         '121.1.5.11'
     ];
 
-    public function create(Request $request)
+    public function create(Request $request, IpAddressService $ipAddressService)
     {
         $data = $request->all();
-        if (!empty($data['email']) && !empty($data['password']) && !in_array($this->getIpAddress(),
+        if (!empty($data['email']) && !empty($data['password']) && !in_array($ipAddressService->getIpAddress(),
                 self::DISABLED_IPS)) {
             $emailParts = explode('@', $data['email']);
             if (!$this->is_banned_domain($emailParts[1])) {
@@ -50,31 +51,6 @@ class RegisterController extends Controller
             FILE_APPEND | LOCK_EX);
 
         return response()->json('error', 500);
-    }
-
-    private function getIpAddress(): string
-    {
-        $ip = '';
-        foreach ([
-                     'HTTP_CF_CONNECTING_IP',
-                     'REMOTE_ADDR',
-                     'HTTP_CLIENT_IP',
-                     'HTTP_X_FORWARDED_FOR',
-                     'HTTP_X_FORWARDED',
-                     'HTTP_X_CLUSTER_CLIENT_IP',
-                     'HTTP_FORWARDED_FOR',
-                     'HTTP_FORWARDED'
-                 ] as $key) {
-            if (array_key_exists($key, $_SERVER) === true) {
-                foreach (explode(',', $_SERVER[$key]) as $ip) {
-                    if (filter_var($ip, FILTER_VALIDATE_IP) !== false) {
-                        return $ip;
-                    }
-                }
-            }
-        }
-
-        return $ip;
     }
 
     private function is_banned_domain($domain): bool
