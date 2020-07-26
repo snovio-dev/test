@@ -35,7 +35,7 @@ class DomainRule implements Rule
      */
     public function passes($attribute, $value) : bool
     {
-        return $this->bannedDomain->isBanned(substr($value, strpos($value, '@') + 1));
+        return !$this->bannedDomain->isBanned(substr($value, strpos($value, '@') + 1));
     }
 
     /**
