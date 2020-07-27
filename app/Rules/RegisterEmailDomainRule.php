@@ -20,7 +20,7 @@ class RegisterEmailDomainRule implements Rule
     public function passes($attribute, $value)
     {
         $emailParts = explode('@', $value);
-        if (isset($emailParts[1]) && BannedDomain::where('domain', $emailParts[1])->exists()) {
+        if (isset($emailParts[1]) && !BannedDomain::where('domain', $emailParts[1])->exists()) {
             return true;
         }
 
