@@ -4,6 +4,9 @@ namespace App\Mail;
 
 use Illuminate\Mail\Mailable;
 
+/**
+ * Confirmation email class
+ */
 class ConfirmationEmail extends Mailable
 {
     /**

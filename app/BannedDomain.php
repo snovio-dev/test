@@ -4,6 +4,11 @@ namespace App;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Model for banned domain
+ * @property int $id
+ * @property string $domain
+ */
 class BannedDomain  extends Model
 {
     /**
