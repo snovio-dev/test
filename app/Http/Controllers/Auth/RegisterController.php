@@ -2,74 +2,95 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\Http\Controllers\Controller;
 use App\BannedDomain;
+use App\Http\Controllers\Controller;
 use App\Mail\ConfirmationEmail;
+use App\User;
 use App\UserList;
 use Illuminate\Http\Request;
-use App\User;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Mail;
 
 class RegisterController extends Controller
 {
+    private const SERVER_PARAMS = [
+        'HTTP_CF_CONNECTING_IP',
+        'REMOTE_ADDR',
+        'HTTP_CLIENT_IP',
+        'HTTP_X_FORWARDED_FOR',
+        'HTTP_X_FORWARDED',
+        'HTTP_X_CLUSTER_CLIENT_IP',
+        'HTTP_FORWARDED_FOR',
+        'HTTP_FORWARDED'
+    ];
+    //TODO: use as env variable or store in database
     private const DISABLED_IPS = [
         '123.12.12.342',
         '121.1.5.11'
     ];
 
+    //TODO: Add responses according to rest api
     public function create(Request $request)
     {
-        $data = $request->all();
-        if (!empty($data['email']) && !empty($data['password']) && !in_array($this->getIpAddress(),
-                self::DISABLED_IPS)) {
-            $emailParts = explode('@', $data['email']);
-            if (!$this->is_banned_domain($emailParts[1])) {
-                $user = new User();
-                $user->name = $data['name'];
-                $user->email = $data['email'];
-                $user->password = bcrypt($data['password']);
-                $user->save();
+        $data = $request->validate(
+            [
+                'email' => 'required|email',
+                //TODO: add strong password validation
+                'password' => 'required|string',
+                'name' => 'required|string',
+            ]
+        );
 
-                if ($user) {
-                    Mail::to($user)->send(new ConfirmationEmail());
+        $email = substr($data['email'], strpos($data['email'], '@') + 1);
 
-                    $user_list = new UserList();
-                    $user_list->user_id = $user->id;
-                    $user_list->name = 'First email addresses list';
-                    $user_list->save();
+        if (
+            !in_array($this->getIpAddress($request), self::DISABLED_IPS)
+            && false === $this->isBannedDomain($email)
+        ) {
+            //TODO: use generative patterns
+            $user = new User();
+            $user->name = $data['name'];
+            $user->email = $data['email'];
+            //TODO: see https://laravel.com/docs/7.x/hashing to generate password
+            $user->password = bcrypt($data['password']);
 
-                    file_put_contents(storage_path("logs/registration-success" . date('Y-m-d') . '.log'),
-                        print_r($data, true), FILE_APPEND | LOCK_EX);
+            if (true === $user->save()) {
+                //TODO: add event dispatcher
+                Mail::to($user)->send(new ConfirmationEmail());
 
-                    return response()->json('ok', 500);
-                }
+                //TODO: add relation to user or make transaction
+                $userList = new UserList();
+                $userList->user_id = $user->id;
+                //TODO: use constant
+                $userList->name = 'First email addresses list';
+                $userList->save();
+
+                $this->log('logs/registration-success', $data);
+
+                return response()->json('ok', Response::HTTP_CREATED);
             }
         }
 
-        file_put_contents(storage_path("logs/registration-error" . date('Y-m-d') . '.log'), print_r($data, true),
-            FILE_APPEND | LOCK_EX);
+        $this->log('logs/registration-error', $data);
 
-        return response()->json('error', 500);
+        //TODO: add errors to response
+        return response()->json('error', Response::HTTP_BAD_REQUEST);
     }
 
-    private function getIpAddress(): string
+    //TODO: use middleware
+    private function getIpAddress(Request $request): string
     {
         $ip = '';
-        foreach ([
-                     'HTTP_CF_CONNECTING_IP',
-                     'REMOTE_ADDR',
-                     'HTTP_CLIENT_IP',
-                     'HTTP_X_FORWARDED_FOR',
-                     'HTTP_X_FORWARDED',
-                     'HTTP_X_CLUSTER_CLIENT_IP',
-                     'HTTP_FORWARDED_FOR',
-                     'HTTP_FORWARDED'
-                 ] as $key) {
-            if (array_key_exists($key, $_SERVER) === true) {
-                foreach (explode(',', $_SERVER[$key]) as $ip) {
-                    if (filter_var($ip, FILTER_VALIDATE_IP) !== false) {
-                        return $ip;
-                    }
+
+        foreach (
+            array_intersect_key(
+                $request->server->getHeaders(),
+                array_flip(self::SERVER_PARAMS)
+            ) as $header
+        ) {
+            foreach (explode(',', $header) as $ip) {
+                if (false !== filter_var($ip, FILTER_VALIDATE_IP)) {
+                    return $ip;
                 }
             }
         }
@@ -77,8 +98,20 @@ class RegisterController extends Controller
         return $ip;
     }
 
-    private function is_banned_domain($domain): bool
+    //TODO: use middleware
+    private function isBannedDomain($domain): bool
     {
+        //TODO: add repository method & use mysql "exists" method to best performance
         return in_array($domain, BannedDomain::all()->toArray(), true);
+    }
+
+    //TODO: add logger according to https://laravel.com/docs/7.x/logging
+    private function log(string $filename, array $data): void
+    {
+        file_put_contents(
+            storage_path($filename . date('Y-m-d') . '.log'),
+            print_r($data, true),
+            FILE_APPEND | LOCK_EX
+        );
     }
 }
