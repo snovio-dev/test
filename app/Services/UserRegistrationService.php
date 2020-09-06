@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Exceptions\NotAllowDomainException;
+use App\Exceptions\NotAllowIpException;
 use App\Exceptions\UserListSaveException;
 use App\Exceptions\UserRegistrationException;
 use App\Exceptions\UserSaveException;
 use App\User;
 use App\UserList;
-use Illuminate\Log\Logger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Psr\Log\LoggerInterface;
@@ -19,6 +19,7 @@ use Throwable;
 class UserRegistrationService
 {
     private $domainService;
+    private $allowIpService;
     private $mailService;
     private $logger;
 
@@ -26,12 +27,19 @@ class UserRegistrationService
      * UserRegistrationService constructor.
      *
      * @param DomainService $domainService
+     * @param AllowIpService $allowIpService
      * @param MailService $mailService
-     * @param Logger $logger
+     * @param LoggerInterface $logger
      */
-    public function __construct(DomainService $domainService, MailService $mailService, LoggerInterface $logger)
+    public function __construct(
+        DomainService $domainService,
+        AllowIpService $allowIpService,
+        MailService $mailService,
+        LoggerInterface $logger
+    )
     {
         $this->domainService = $domainService;
+        $this->allowIpService = $allowIpService;
         $this->mailService = $mailService;
         $this->logger = $logger;
     }
@@ -47,13 +55,18 @@ class UserRegistrationService
         DB::beginTransaction();
 
         try {
+
+            if (!$this->allowIpService->isIpAllow()) {
+                throw new NotAllowIpException('Not allow ip');
+            }
+
             if (!$this->domainService->checkAllowIpAndDomain($data['email'])) {
-                throw new NotAllowDomainException('Not allow ip or domain');
+                throw new NotAllowDomainException('Not allow domain');
             }
 
             $user = $this->saveUser($data);
             $this->saveUserList($user);
-            $this->mailService->sendConfirmation($user);
+            // $this->mailService->sendConfirmation($user);
             $this->addSuccessLog($data);
             DB::commit();
         } catch (Throwable $exception) {
