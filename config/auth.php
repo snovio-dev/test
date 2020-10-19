@@ -114,4 +114,10 @@ return [
 
     'password_timeout' => 10800,
 
+    'disabled' => [
+        'ip_address' => [
+            '123.12.12.342',
+            '121.1.5.11'
+        ]
+    ]
 ];
