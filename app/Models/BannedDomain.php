@@ -1,10 +1,10 @@
 <?php
 
-namespace App;
+namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class BannedDomain  extends Model
+class BannedDomain extends Model
 {
     /**
      * The attributes that are mass assignable.

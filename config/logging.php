@@ -99,6 +99,14 @@ return [
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],
+
+        'reg-error' => [
+            'path' => storage_path('logs/registration-error.log'),
+        ],
+
+        'reg-success' => [
+            'path' => storage_path('logs/registration-success.log'),
+        ],
     ],
 
 ];
