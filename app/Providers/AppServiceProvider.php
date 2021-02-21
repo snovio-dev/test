@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\ServiceProvider;
+use App\Services\HttpService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -23,6 +25,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        //
+        Validator::extend('email_domain', function ($attribute, $value, $parameters, $validator) {
+            return (new HttpService())->isValidEmailDomain($value);
+        }, 'The :domain of the email is banned.');
     }
 }
