@@ -2,7 +2,7 @@
 
 namespace App\Http\Traits;
 
-use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\Response;
 
 trait ResponseMessages
 {

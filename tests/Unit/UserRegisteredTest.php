@@ -2,71 +2,32 @@
 
 namespace Tests\Unit;
 
+use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Requests\Auth\RegisterFormRequest;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Symfony\Component\HttpFoundation\Response;
 use Tests\TestCase;
 
 class UserRegisteredTest extends TestCase
 {
-    public function testRequiredFieldsForRegistration(): void
+    use DatabaseMigrations;
+
+    public function testCreate(): void
     {
-        $this->json('POST', 'api/register', [], ['Accept' => 'application/json'])
-             ->assertStatus(422)
-             ->assertJson([
-                 'message' => 'Registration error',
-                 'errors' => [                     
-                     'email' => ['The email field is required.'],
-                     'password' => ['The password field is required.'],
-                 ]
-             ]);
-    }
+        $request = RegisterFormRequest::create(
+            '/api/register',
+            'POST',
+            [
+                'name' => 'test',
+                'email' => 'test@test.com',
+                'password' => 'test',
+            ]
+        );
 
-    public function testRequiredPassword(): void
-    {
-        $userData = [
-            'name' => 'test',
-            'email' => 'test@test.com',
-        ];
+        $controller = new RegisterController();
 
-        $this->json('POST', 'api/register', $userData, ['Accept' => 'application/json'])
-             ->assertStatus(422)
-             ->assertJson([
-                 'message' => 'Registration error',
-                 'errors' => [
-                     'password' => ['The password field is required.']
-                 ]
-             ]);
-    }
+        $result = $controller->create($request);
 
-    public function testRequiredEmail(): void
-    {
-        $userData = [
-            'name' => 'test',
-            'password' => 'test',
-        ];
-
-        $this->json('POST', 'api/register', $userData, ['Accept' => 'application/json'])
-             ->assertStatus(422)
-             ->assertJson([
-                 'message' => 'Registration error',
-                 'errors' => [
-                     'email' => ['The email field is required.']
-                 ]
-             ]);
-    }
-
-    public function testSuccessfulRegistration(): void
-    {
-        $userData = [
-            'name' => 'test',
-            'email' => 'test@test.com',
-            'password' => 'test',
-        ];
-
-        $this->json('POST', 'api/register', $userData, ['Accept' => 'application/json'])
-             ->assertStatus(201)
-             ->assertJsonStructure([
-                 'success' => true,
-                 'status' => 201,
-                 'messages' => 'Registration success'
-             ]);
+        self::assertEquals(Response::HTTP_CREATED, $result['status']);
     }
 }

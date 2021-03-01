@@ -13,7 +13,7 @@ class RegisterController extends Controller
 {
     use ResponseMessages;
 
-    public function create(RegisterFormRequest $request)
+    public function create(RegisterFormRequest $request): array
     {
         $data = [
             'email'    => $request->get('email'),
