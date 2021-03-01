@@ -99,6 +99,18 @@ return [
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],
+
+        'register_error' => [
+            'driver' => 'single',
+            'path' => storage_path("logs/registration-error" . date('Y-m-d') . '.log'),
+            'level' => 'info',
+        ],
+
+        'register_success' => [
+            'driver' => 'single',
+            'path' => storage_path("logs/registration-success" . date('Y-m-d') . '.log'),
+            'level' => 'info',
+        ],
     ],
 
 ];
