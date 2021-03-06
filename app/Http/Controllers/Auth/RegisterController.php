@@ -3,51 +3,46 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\BannedDomain;
+use App\Http\Requests\Auth\RegisterCreateRequest;
 use App\Mail\ConfirmationEmail;
+use App\Services\DomainService;
+use App\Services\IpService;
 use App\UserList;
-use Illuminate\Http\Request;
 use App\User;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class RegisterController extends Controller
 {
-    private const DISABLED_IPS = [
-        '123.12.12.342',
-        '121.1.5.11'
-    ];
-
-    public function create(Request $request)
+    public function create(RegisterCreateRequest $request, IpService $ipService): JsonResponse
     {
         $data = $request->all();
-        if (!empty($data['email']) && !empty($data['password']) && !in_array($this->getIpAddress(),
-                self::DISABLED_IPS)) {
+        if ($ipService->isEnabled($this->getIpAddress())) {
             $emailParts = explode('@', $data['email']);
-            if (!$this->is_banned_domain($emailParts[1])) {
+            if (!$this->isBannedDomain($emailParts[1])) {
                 $user = new User();
                 $user->name = $data['name'];
                 $user->email = $data['email'];
                 $user->password = bcrypt($data['password']);
-                $user->save();
+                $isSaved = $user->save();
 
-                if ($user) {
-                    Mail::to($user)->send(new ConfirmationEmail());
+                if ($isSaved) {
+                    Mail::to($user)->queue(new ConfirmationEmail());
 
-                    $user_list = new UserList();
-                    $user_list->user_id = $user->id;
-                    $user_list->name = 'First email addresses list';
-                    $user_list->save();
+                    $userList = new UserList();
+                    $userList->user_id = $user->id;
+                    $userList->name = 'First email addresses list';
+                    $userList->save();
 
-                    file_put_contents(storage_path("logs/registration-success" . date('Y-m-d') . '.log'),
-                        print_r($data, true), FILE_APPEND | LOCK_EX);
+                    Log::channel('registration-success')->info('Registration success!', $data);
 
-                    return response()->json('ok', 500);
+                    return response()->json('ok');
                 }
             }
         }
 
-        file_put_contents(storage_path("logs/registration-error" . date('Y-m-d') . '.log'), print_r($data, true),
-            FILE_APPEND | LOCK_EX);
+        Log::channel('registration-error')->error('Registration error!', $data);
 
         return response()->json('error', 500);
     }
@@ -77,8 +72,10 @@ class RegisterController extends Controller
         return $ip;
     }
 
-    private function is_banned_domain($domain): bool
+    private function isBannedDomain(string $domain): bool
     {
-        return in_array($domain, BannedDomain::all()->toArray(), true);
+        /** @var DomainService $domainService */
+        $domainService = resolve(DomainService::class);
+        return $domainService->isBanned($domain);
     }
 }
